@@ -71,5 +71,65 @@ Interpreted as regexp."
 
 (defvar ahp--projects nil)
 
+(defun ahp-update-projects ()
+  "Update all projects."
+  (interactive)
+  (setq ahp-projects
+        (cl-loop for (base . files) in ahp--projects
+                 collect (cons base (ahp--files-in base)))))
+
+(defun ahp--files-in (dir)
+  "Return a sorted list of files that are recursively contained in `dir'.
+
+Returned files are pruned, see `ahp--pruned-ls'.
+Files contained in pruned directories are not included."
+  (let ((q (queue-create)))
+    (queue-enqueue q dir)
+    (cl-loop until (null (queue-head q)) ; expanded `queue-empty', didn't compile otherwise
+             for (dirs files) = (ahp--pruned-ls (queue-dequeue q))
+             do (ahp--enqueue-all q dirs)
+             nconc files into rfiles
+             finally (return (sort rfiles #'string<)))))
+
+(defun ahp--dirs-in (dir)
+  "Return a sorted list of directories that are recursively contained in `dir'.
+
+Returned directories are pruned, see `ahp--pruned-ls'.
+Directories contained in pruned directories are not included."
+  (let ((q (queue-create)))
+    (queue-enqueue q dir)
+    (cl-loop until (null (queue-head q))
+             for (dirs _) = (ahp--pruned-ls (queue-dequeue q))
+             do (ahp--enqueue-all q dirs)
+             nconc dirs into rdirs
+             finally (return (progn (cl-delete-duplicates rdirs)
+                                    (sort rdirs #'string<))))))
+
+(defun ahp--pruned-ls (dir)
+  "Return a two element list of pruned directories and files in `dir'.
+
+Directories are pruned according to `ahp-ignored-dirs'
+and files according to `ahp-ignored-files' and `ahp-ignored-file-patterns'.
+If `ahp-only-these-patterns' is non-nil only files that match are
+collected."
+  (cl-loop for file in (directory-files dir t)
+           for name = (file-name-nondirectory file)
+           when (and (file-directory-p file) (not (member name (cl-union '("." "..")
+                                                                     ahp-ignored-dirs))))
+             collect file into dirs
+           when (if ahp-only-these-patterns
+                    (string-match-p (regexp-opt ahp-only-these-patterns) name)
+                  (and (not (file-directory-p file))
+                       (not (member name ahp-ignored-files))
+                       (not (string-match-p (regexp-opt ahp-ignored-file-patterns) name))))
+             collect file into files
+           finally
+             (return (list dirs files))))
+
+(defun ahp--enqueue-all (queue xs)
+  "Enqueue everything in `xs' in `queue'."
+  (cl-loop for x in xs
+           do (queue-enqueue queue x)))
+
 (provide 'ahp)
 ;;; ahp.el ends here
