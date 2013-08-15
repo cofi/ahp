@@ -6,6 +6,7 @@
 ;; Version:
 ;; Keywords: projects convenicence
 ;; URL: https://github.com/cofi/ahp
+;; Package-Requires: ((queue "0.1")
 ;;
 ;; This file is not part of GNU Emacs.
 
@@ -27,6 +28,48 @@
 ;;; Commentary:
 
 ;;; Code:
+
+(require 'cl-lib)
+(require 'queue)
+
+(defgroup ahp nil
+  "Ad hoc projects."
+  :group 'ahp
+  :prefix 'ahp)
+
+(defcustom ahp-roots
+  (list ".git" ".hg" ".svn" "Makefile" ".ahp" ".dir-locals.el")
+  "Files that make the containing directory roots of ad hook projects."
+  :type '(repeat string)
+  :group 'ahp)
+
+(defcustom ahp-ignored-dirs
+  (list ".git" ".hg" ".svn")
+  "List of directory names whose subdirectories will not be
+traversed for files or directories."
+  :type '(repeat string)
+  :group 'ahp)
+
+(defcustom ahp-ignored-files
+  (list "TAGS" "GTAGS" "GPATH" "GRTAGS" "GSYMS")
+  "List of files that will not be included in the file list."
+  :type '(repeat string)
+  :group 'ahp)
+
+(defcustom ahp-ignored-file-patterns
+  (list "\.elc" "\.o" "\.pyc")
+  "List of file patterns that will not be included in the file list.
+Interpreted as regexp."
+  :type '(repeat string)
+  :group 'ahp)
+
+(defcustom ahp-only-these-patterns nil
+  "List of file patterns that will not be included in the file list.
+Interpreted as regexp."
+  :type '(repeat string)
+  :group 'ahp)
+
+(defvar ahp--projects nil)
 
 (provide 'ahp)
 ;;; ahp.el ends here
