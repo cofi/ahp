@@ -89,7 +89,7 @@ Files contained in pruned directories are not included."
              for (dirs files) = (ahp--pruned-ls (queue-dequeue q))
              do (ahp--enqueue-all q dirs)
              nconc files into rfiles
-             finally (return (sort rfiles #'string<)))))
+             finally (cl-return (sort rfiles #'string<)))))
 
 (defun ahp--dirs-in (dir)
   "Return a sorted list of directories that are recursively contained in `dir'.
@@ -102,7 +102,7 @@ Directories contained in pruned directories are not included."
              for (dirs _) = (ahp--pruned-ls (queue-dequeue q))
              do (ahp--enqueue-all q dirs)
              nconc dirs into rdirs
-             finally (return (progn (cl-delete-duplicates rdirs)
+             finally (cl-return (progn (cl-delete-duplicates rdirs)
                                     (sort rdirs #'string<))))))
 
 (defun ahp--pruned-ls (dir)
@@ -124,7 +124,7 @@ collected."
                        (not (string-match-p (regexp-opt ahp-ignored-file-patterns) name))))
              collect file into files
            finally
-             (return (list dirs files))))
+             (cl-return (list dirs files))))
 
 (defun ahp--enqueue-all (queue xs)
   "Enqueue everything in `xs' in `queue'."
