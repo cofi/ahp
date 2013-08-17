@@ -85,6 +85,7 @@ Interpreted as regexp."
         (cl-loop for (base . files) in ahp--projects
                  collect (cons base (ahp--files-in base)))))
 
+;;;###autoload
 (defun ahp-dired (dir)
   "Open a project directory in dired."
   (interactive (list (funcall ahp-completing-read (format "(%s) Directory: " (ahp--project-name))
@@ -92,6 +93,7 @@ Interpreted as regexp."
                               nil t)))
   (dired dir))
 
+;;;###autoload
 (defun ahp-root-dired (choose-project)
   "Open the project's base directory in dired.
 
@@ -102,6 +104,7 @@ With a prefix choose the project first."
                     (ahp--project-root))))
     (dired project)))
 
+;;;###autoload
 (defun ahp-switch-to-buffer (buffer)
   "Switch to a buffer in the project."
   (interactive (list (funcall ahp-completing-read (format "(%s) Buffer: " (ahp--project-name))
@@ -110,6 +113,7 @@ With a prefix choose the project first."
                               nil t)))
   (switch-to-buffer buffer))
 
+;;;###autoload
 (defun ahp-find-file (choose-project)
   "Find a file in the project.
 
@@ -122,6 +126,7 @@ With a prefix choose the project first."
                         (ahp--project-files project)
                         nil t))))
 
+;;;###autoload
 (defun ahp-kill-other-buffers ()
   "Kill other buffers of the current project."
   (interactive)
@@ -129,6 +134,7 @@ With a prefix choose the project first."
     (mapc #'kill-buffer buffers)
     (message "Killed %d buffer" (length buffers))))
 
+;;;###autoload
 (defun ahp-kill-buffers ()
   "Kill all buffers of the current project."
   (interactive)
