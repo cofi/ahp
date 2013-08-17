@@ -74,9 +74,44 @@ Interpreted as regexp."
 (defun ahp-update-projects ()
   "Update all projects."
   (interactive)
-  (setq ahp-projects
+  (setq ahp--projects
         (cl-loop for (base . files) in ahp--projects
                  collect (cons base (ahp--files-in base)))))
+
+(defun ahp--project-root (&optional buffer)
+  "Return the base directory of the current project or the project `buffer' is in."
+  (let ((fname (buffer-file-name buffer)))
+    (cl-loop for root in ahp-roots
+             for dir = (locate-dominating-file fname root)
+             when dir
+              do (cl-return dir))))
+
+(defun ahp--project-name (&optional buffer-or-path)
+  "Return the name of the project."
+  (let ((root (if (stringp buffer-or-path)
+                  buffer-or-path
+                (ahp--project-root buffer-or-path))))
+    (file-name-nondirectory (directory-file-name root))))
+
+(defun ahp--access-property (project property constructor)
+  "Return `property' of `project' and construct it using `constructor' if it does not exist.
+
+`constructor' has to be a function taking the base directory of the project."
+  (let ((entry (assoc project ahp--projects)))
+    (unless entry
+      (setq entry (list project))
+      (push entry ahp--projects))
+    (unless (plist-get (cdr entry) property)
+      (setf (cdr entry) (plist-put (cdr entry) property (funcall constructor project))))
+    (plist-get (cdr entry) property)))
+
+(defun ahp--project-files (project)
+  "Return files of `project'."
+  (ahp--access-property project :files #'ahp--files-in))
+
+(defun ahp--project-dirs (project)
+  "Return directories of `project'."
+  (ahp--access-property project :dirs #'ahp--dirs-in))
 
 (defun ahp--files-in (dir)
   "Return a sorted list of files that are recursively contained in `dir'.
