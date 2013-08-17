@@ -6,7 +6,7 @@
 ;; Version:
 ;; Keywords: projects convenicence
 ;; URL: https://github.com/cofi/ahp
-;; Package-Requires: ((queue "0.1")
+;; Package-Requires: ((queue "0.1"))
 ;;
 ;; This file is not part of GNU Emacs.
 
