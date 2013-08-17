@@ -69,6 +69,13 @@ Interpreted as regexp."
   :type '(repeat string)
   :group 'ahp)
 
+(defcustom ahp-completing-read #'ido-completing-read
+  "Completing read to use."
+  :type '(choice
+          (const :tag "Normal" completing-read)
+          (const :tag "Ido" ido-completing-read)
+          (function :tag "Other")))
+
 (defvar ahp--projects nil)
 
 (defun ahp-update-projects ()
@@ -77,6 +84,48 @@ Interpreted as regexp."
   (setq ahp--projects
         (cl-loop for (base . files) in ahp--projects
                  collect (cons base (ahp--files-in base)))))
+
+(defun ahp-dired (dir)
+  "Open a project directory in dired."
+  (interactive (list (funcall ahp-completing-read (format "(%s) Directory: " (ahp--project-name))
+                              (ahp--project-dirs (ahp--project-root))
+                              nil t)))
+  (dired dir))
+
+(defun ahp-root-dired (choose-project)
+  "Open the project's base directory in dired.
+
+With a prefix choose the project first."
+  (interactive "P")
+  (let* ((project (if (or choose-project (not (buffer-file-name)))
+                      (funcall ahp-completing-read "Project: " (ahp--projects) nil t)
+                    (ahp--project-root))))
+    (dired project)))
+
+(defun ahp-switch-to-buffer (buffer)
+  "Switch to a buffer in the project."
+  (interactive (list (funcall ahp-completing-read (format "(%s) Buffer: " (ahp--project-name))
+                              (mapcar #'buffer-name
+                                      (ahp--project-buffers (expand-file-name (ahp--project-root))))
+                              nil t)))
+  (switch-to-buffer buffer))
+
+(defun ahp-find-file (choose-project)
+  "Find a file in the project.
+
+With a prefix choose the project first."
+  (interactive "P")
+  (let* ((project (if (or choose-project (not (buffer-file-name)))
+                      (funcall ahp-completing-read "Project: " (ahp--projects) nil t)
+                    (ahp--project-root))))
+    (find-file (funcall ahp-completing-read (format "(%s) File: " (ahp--project-name project))
+                        (ahp--project-files project)
+                        nil t))))
+
+(defun ahp--projects ()
+  "Return the projects."
+  (cl-loop for (name . _) in ahp--projects
+           collect name))
 
 (defun ahp--project-root (&optional buffer)
   "Return the base directory of the current project or the project `buffer' is in."
@@ -112,6 +161,13 @@ Interpreted as regexp."
 (defun ahp--project-dirs (project)
   "Return directories of `project'."
   (ahp--access-property project :dirs #'ahp--dirs-in))
+
+(defun ahp--project-buffers (project)
+  "Return the buffers which are in `project'."
+    (cl-loop for buffer in (buffer-list)
+             for fname = (expand-file-name (or (buffer-file-name buffer) ""))
+             when (string-prefix-p project fname)
+               collect buffer))
 
 (defun ahp--files-in (dir)
   "Return a sorted list of files that are recursively contained in `dir'.
