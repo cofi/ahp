@@ -122,6 +122,19 @@ With a prefix choose the project first."
                         (ahp--project-files project)
                         nil t))))
 
+(defun ahp-kill-other-buffers ()
+  "Kill other buffers of the current project."
+  (interactive)
+  (let ((buffers (ahp--project-buffers (expand-file-name (ahp--project-root)))))
+    (mapc #'kill-buffer buffers)
+    (message "Killed %d buffer" (length buffers))))
+
+(defun ahp-kill-buffers ()
+  "Kill all buffers of the current project."
+  (interactive)
+  (ahp-kill-other-buffers)
+  (kill-this-buffer))
+
 (defun ahp--projects ()
   "Return the projects."
   (cl-loop for (name . _) in ahp--projects
