@@ -77,6 +77,12 @@ Interpreted as regexp."
           (function :tag "Other"))
   :group 'ahp)
 
+(defcustom ahp-project-save-file (concat user-emacs-directory "ahp-projects")
+  "File to save projects on exit and load on start.
+Set to nil to prevent saving and loading."
+  :type 'string
+  :group 'ahp)
+
 (defvar ahp--projects nil)
 
 (defun ahp-update-projects ()
@@ -141,6 +147,35 @@ With a prefix choose the project first."
   (interactive)
   (ahp-kill-other-buffers)
   (kill-this-buffer))
+
+;;;###autoload
+(defun ahp-save-projects ()
+  "Save projects to `ahp-project-save-file'."
+  (interactive)
+  (let ((print-length nil))
+    (when (stringp ahp-project-save-file)
+      (with-current-buffer (find-file-noselect ahp-project-save-file)
+        (delete-region (point-min) (point-max))
+        (print (ahp--projects) (current-buffer))
+        (save-buffer)))))
+
+;;;###autoload
+(defun ahp-read-projects (initialize)
+  "Read projects from `ahp-project-save-file'.
+
+With prefix also initialize caches."
+  (interactive "P")
+  (ignore-errors
+    (let ((projects (when (and (stringp ahp-project-save-file) (file-exists-p ahp-project-save-file))
+                      (with-current-buffer (find-file-noselect ahp-project-save-file)
+                        (goto-char (point-min))
+                        (read (current-buffer))))))
+      (cl-loop for project in projects
+               do (cl-pushnew (list project) ahp--projects :key #'first :test #'string=))
+      (when initialize
+        (cl-loop for project in (ahp--projects)
+                 do (progn (ahp--project-files project)
+                           (ahp--project-dirs project)))))))
 
 (defun ahp--projects ()
   "Return the projects."
@@ -241,6 +276,10 @@ collected."
   "Enqueue everything in `xs' in `queue'."
   (cl-loop for x in xs
            do (queue-enqueue queue x)))
+
+(when ahp-project-save-file
+  (add-hook 'kill-emacs-hook #'ahp-save-projects)
+  (ahp-read-projects nil))
 
 (provide 'ahp)
 ;;; ahp.el ends here
