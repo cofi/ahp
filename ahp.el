@@ -184,8 +184,8 @@ With a prefix choose the project first."
 (defun ahp--project-buffers (project)
   "Return the buffers which are in `project'."
     (cl-loop for buffer in (buffer-list)
-             for fname = (expand-file-name (or (buffer-file-name buffer) ""))
-             when (string-prefix-p project fname)
+             for fname = (buffer-file-name buffer)
+             when (and fname (string-prefix-p project (expand-file-name fname)))
                collect buffer))
 
 (defun ahp--files-in (dir)
