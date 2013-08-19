@@ -74,7 +74,8 @@ Interpreted as regexp."
   :type '(choice
           (const :tag "Normal" completing-read)
           (const :tag "Ido" ido-completing-read)
-          (function :tag "Other")))
+          (function :tag "Other"))
+  :group 'ahp)
 
 (defvar ahp--projects nil)
 
