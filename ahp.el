@@ -94,9 +94,12 @@ Set to nil to prevent saving and loading."
 (defun ahp-update-projects ()
   "Update all projects."
   (interactive)
-  (setq ahp--projects
-        (cl-loop for (base . files) in ahp--projects
-                 collect (cons base (ahp--files-in base)))))
+  (cl-loop for entry in ahp--projects
+           for project = (car entry)
+           when (plist-member entry :files)
+             do (plist-put entry :files (ahp--project-files project))
+           when (plist-member entry :dirs)
+             do (plist-put entry :dirs (ahp--project-dirs project))))
 
 ;;;###autoload
 (defun ahp-dired (dir)
