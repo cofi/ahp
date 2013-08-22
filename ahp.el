@@ -4,7 +4,7 @@
 ;; Author: Michael Markert <markert.michael@gmail.com>
 ;; Created: 2013-08-02
 ;; Version: 0.1
-;; Keywords: projects convenicence
+;; Keywords: projects convenience
 ;; URL: https://github.com/cofi/ahp
 ;; Package-Requires: ((queue "0.1"))
 ;;
