@@ -217,7 +217,8 @@ With prefix also initialize caches."
       (setq entry (list project))
       (push entry ahp--projects))
     (unless (plist-get (cdr entry) property)
-      (setf (cdr entry) (plist-put (cdr entry) property (funcall constructor project))))
+      (ahp--maybe-with-project-config project
+       (setf (cdr entry) (plist-put (cdr entry) property (funcall constructor project)))))
     (plist-get (cdr entry) property)))
 
 (defun ahp--project-files (project)
@@ -288,6 +289,24 @@ collected."
   "Enqueue everything in `xs' in `queue'."
   (cl-loop for x in xs
            do (queue-enqueue queue x)))
+
+(defmacro ahp--maybe-with-project-config (project &rest body)
+  "Execute `body' with project config if the file exists."
+  (let ((project-config (apply #'expand-file-name `(".ahp" ,project))))
+    (if (file-readable-p project-config)
+        `(let (,@(cl-loop for entry in (with-temp-buffer
+                                         (insert-file project-config)
+                                         (goto-char (point-min))
+                                         (read (current-buffer)))
+                          for name = (first entry)
+                          when (member name '(ahp-ignored-dirs
+                                              ahp-ignored-dir-patterns
+                                              ahp-ignored-files
+                                              ahp-ignored-file-patterns
+                                              ahp-only-these-patterns))
+                          collect entry))
+           ,@body)
+      `(progn ,@body))))
 
 (when ahp-project-save-file
   (add-hook 'kill-emacs-hook #'ahp-save-projects)
