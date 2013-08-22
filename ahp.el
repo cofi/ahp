@@ -163,7 +163,8 @@ With a prefix choose the project first."
       (with-current-buffer (find-file-noselect ahp-project-save-file)
         (delete-region (point-min) (point-max))
         (print (ahp--projects) (current-buffer))
-        (save-buffer)))))
+        (save-buffer)
+        (kill-buffer (current-buffer))))))
 
 ;;;###autoload
 (defun ahp-read-projects (initialize)
