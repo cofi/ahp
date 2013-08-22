@@ -50,6 +50,12 @@ traversed for files or directories."
   :type '(repeat string)
   :group 'ahp)
 
+(defcustom ahp-ignored-dir-patterns nil
+  "List of directory name patterns whose subdirectories will not
+be traversed for files or directories."
+  :type '(repeat string)
+  :group 'ahp)
+
 (defcustom ahp-ignored-files
   (list "TAGS" "GTAGS" "GPATH" "GRTAGS" "GSYMS")
   "List of files that will not be included in the file list."
@@ -260,8 +266,9 @@ If `ahp-only-these-patterns' is non-nil only files that match are
 collected."
   (cl-loop for file in (directory-files dir t)
            for name = (file-name-nondirectory file)
-           when (and (file-directory-p file) (not (member name (cl-union '("." "..")
-                                                                     ahp-ignored-dirs))))
+           when (and (file-directory-p file)
+                   (not (member name (cl-union '("." "..") ahp-ignored-dirs)))
+                   (not (string-match-p (regexp-opt ahp-ignored-dir-patterns) name)))
              collect file into dirs
            when (if ahp-only-these-patterns
                     (string-match-p (regexp-opt ahp-only-these-patterns) name)
