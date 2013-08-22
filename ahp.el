@@ -273,13 +273,13 @@ collected."
            for name = (file-name-nondirectory file)
            when (and (file-directory-p file)
                    (not (member name (cl-union '("." "..") ahp-ignored-dirs)))
-                   (not (string-match-p (regexp-opt ahp-ignored-dir-patterns) name)))
+                   (not (and ahp-ignored-dir-patterns (string-match-p (regexp-opt ahp-ignored-dir-patterns) name))))
              collect file into dirs
            when (if ahp-only-these-patterns
                     (string-match-p (regexp-opt ahp-only-these-patterns) name)
                   (and (not (file-directory-p file))
                        (not (member name ahp-ignored-files))
-                       (not (string-match-p (regexp-opt ahp-ignored-file-patterns) name))))
+                       (not (and ahp-ignored-file-patterns (string-match-p (regexp-opt ahp-ignored-file-patterns) name)))))
              collect file into files
            finally
              (cl-return (list dirs files))))
