@@ -173,7 +173,8 @@ With prefix also initialize caches."
   (interactive "P")
   (ignore-errors
     (let ((projects (when (and (stringp ahp-project-save-file) (file-exists-p ahp-project-save-file))
-                      (with-current-buffer (find-file-noselect ahp-project-save-file)
+                      (with-temp-buffer
+                        (insert-file-contents ahp-project-save-file)
                         (goto-char (point-min))
                         (read (current-buffer))))))
       (cl-loop for project in projects
