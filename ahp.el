@@ -215,8 +215,13 @@ With prefix also initialize caches."
       (setq entry (list project))
       (push entry ahp--projects))
     (unless (plist-get (cdr entry) property)
-      (ahp--maybe-with-project-config project
-       (setf (cdr entry) (plist-put (cdr entry) property (funcall constructor project)))))
+      (let* ((project-config (ahp--read-project-config project))
+             (ahp-ignored-dirs (or (cdr (assoc 'ahp-ignored-dirs project-config)) ahp-ignored-dirs))
+             (ahp-ignored-dir-pattern (or (cdr (assoc 'ahp-ignored-dir-pattern project-config)) ahp-ignored-dir-pattern))
+             (ahp-ignored-files (or (cdr (assoc 'ahp-ignored-files project-config)) ahp-ignored-files))
+             (ahp-ignored-file-pattern (or (cdr (assoc 'ahp-ignored-file-pattern project-config)) ahp-ignored-file-pattern))
+             (ahp-only-this-pattern (or (cdr (assoc 'ahp-only-this-pattern project-config)) ahp-only-this-pattern)))
+        (setf (cdr entry) (plist-put (cdr entry) property (funcall constructor project)))))
     (plist-get (cdr entry) property)))
 
 (defun ahp--project-files (project)
@@ -288,23 +293,15 @@ If `ahp-only-this-pattern' is non-nil only files that match are collected."
   (cl-loop for x in xs
            do (queue-enqueue queue x)))
 
-(defmacro ahp--maybe-with-project-config (project &rest body)
-  "Execute `body' with project config if the file exists."
-  (let ((project-config (apply #'expand-file-name `(".ahp" ,project))))
-    (if (file-readable-p project-config)
-        `(let (,@(cl-loop for entry in (with-temp-buffer
-                                         (insert-file project-config)
-                                         (goto-char (point-min))
-                                         (read (current-buffer)))
-                          for name = (first entry)
-                          when (member name '(ahp-ignored-dirs
-                                              ahp-ignored-dir-patterns
-                                              ahp-ignored-files
-                                              ahp-ignored-file-patterns
-                                              ahp-only-these-patterns))
-                          collect entry))
-           ,@body)
-      `(progn ,@body))))
+(defun ahp--read-project-config (project)
+  "Read local config of `project' and return it as an alist."
+  (let ((config-file (expand-file-name ".ahp" project)))
+    (if (file-readable-p config-file)
+        (with-temp-buffer
+          (insert-file-contents config-file)
+          (goto-char (point-min))
+          (read (current-buffer)))
+        nil)))
 
 (when ahp-project-save-file
   (add-hook 'kill-emacs-hook #'ahp-save-projects)
