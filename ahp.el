@@ -92,12 +92,11 @@ Set to nil to prevent saving and loading."
 (defun ahp-update-projects ()
   "Update all projects."
   (interactive)
-  (cl-loop for entry in ahp--projects
-           for project = (car entry)
-           when (plist-member entry :files)
-             do (plist-put entry :files (ahp--project-files project))
-           when (plist-member entry :dirs)
-             do (plist-put entry :dirs (ahp--project-dirs project))))
+  (cl-loop for (project . plist) in ahp--projects
+           when (plist-member plist :files)
+             do (ahp--project-files project t)
+           when (plist-member plist :dirs)
+           do (ahp--project-dirs project t)))
 
 ;;;###autoload
 (defun ahp-dired (dir)
@@ -206,7 +205,7 @@ With prefix also initialize caches."
                 (ahp--project-root buffer-or-path))))
     (file-name-nondirectory (directory-file-name root))))
 
-(defun ahp--access-property (project property constructor)
+(defun ahp--access-property (project property constructor force-update)
   "Return `property' of `project' and construct it using `constructor' if it does not exist.
 
 `constructor' has to be a function taking the base directory of the project."
@@ -214,7 +213,7 @@ With prefix also initialize caches."
     (unless entry
       (setq entry (list project))
       (push entry ahp--projects))
-    (unless (plist-get (cdr entry) property)
+    (when (or force-update (not (plist-get (cdr entry) property)))
       (let* ((project-config (ahp--read-project-config project))
              (ahp-ignored-dirs (or (cdr (assoc 'ahp-ignored-dirs project-config)) ahp-ignored-dirs))
              (ahp-ignored-dir-pattern (or (cdr (assoc 'ahp-ignored-dir-pattern project-config)) ahp-ignored-dir-pattern))
@@ -224,13 +223,15 @@ With prefix also initialize caches."
         (setf (cdr entry) (plist-put (cdr entry) property (funcall constructor project)))))
     (plist-get (cdr entry) property)))
 
-(defun ahp--project-files (project)
-  "Return files of `project'."
-  (ahp--access-property project :files #'ahp--files-in))
+(defun ahp--project-files (project &optional force-update)
+  "Return files of `project'.
+If `force-update' is non-nil the cache will be ignored."
+  (ahp--access-property project :files #'ahp--files-in force-update))
 
-(defun ahp--project-dirs (project)
-  "Return directories of `project'."
-  (ahp--access-property project :dirs #'ahp--dirs-in))
+(defun ahp--project-dirs (project &optional force-update)
+  "Return directories of `project'.
+If `force-update' is non-nil the cache will be ignored."
+  (ahp--access-property project :dirs #'ahp--dirs-in force-update))
 
 (defun ahp--project-buffers (project)
   "Return the buffers which are in `project'."
