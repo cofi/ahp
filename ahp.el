@@ -50,10 +50,10 @@ traversed for files or directories."
   :type '(repeat string)
   :group 'ahp)
 
-(defcustom ahp-ignored-dir-patterns nil
-  "List of directory name patterns whose subdirectories will not
+(defcustom ahp-ignored-dir-pattern nil
+  "Pattern of directory names whose subdirectories will not
 be traversed for files or directories."
-  :type '(repeat string)
+  :type 'string
   :group 'ahp)
 
 (defcustom ahp-ignored-files
@@ -62,17 +62,15 @@ be traversed for files or directories."
   :type '(repeat string)
   :group 'ahp)
 
-(defcustom ahp-ignored-file-patterns
-  (list "\.elc" "\.o" "\.pyc")
-  "List of file patterns that will not be included in the file list.
-Interpreted as regexp."
-  :type '(repeat string)
+(defcustom ahp-ignored-file-pattern
+  (regexp-opt '("\.elc" "\.o" "\.pyc"))
+  "Pattern of files that will not be included in the file list."
+  :type 'string
   :group 'ahp)
 
-(defcustom ahp-only-these-patterns nil
-  "List of file patterns that will not be included in the file list.
-Interpreted as regexp."
-  :type '(repeat string)
+(defcustom ahp-only-this-pattern nil
+  "Pattern of files that will only be included in the file list."
+  :type 'string
   :group 'ahp)
 
 (defcustom ahp-completing-read #'ido-completing-read
@@ -83,7 +81,7 @@ Interpreted as regexp."
           (function :tag "Other"))
   :group 'ahp)
 
-(defcustom ahp-project-save-file (concat user-emacs-directory "ahp-projects")
+(defcustom ahp-project-save-file (expand-file-name "ahp-projects" user-emacs-directory)
   "File to save projects on exit and load on start.
 Set to nil to prevent saving and loading."
   :type 'string
@@ -266,21 +264,21 @@ Directories contained in pruned directories are not included."
 (defun ahp--pruned-ls (dir)
   "Return a two element list of pruned directories and files in `dir'.
 
-Directories are pruned according to `ahp-ignored-dirs'
-and files according to `ahp-ignored-files' and `ahp-ignored-file-patterns'.
-If `ahp-only-these-patterns' is non-nil only files that match are
-collected."
+Directories are pruned according to `ahp-ignored-dirs' and
+`ahp-ignored-dir-pattern', files according to `ahp-ignored-files'
+and `ahp-ignored-file-pattern'.
+If `ahp-only-this-pattern' is non-nil only files that match are collected."
   (cl-loop for file in (directory-files dir t)
            for name = (file-name-nondirectory file)
            when (and (file-directory-p file)
                    (not (member name (cl-union '("." "..") ahp-ignored-dirs)))
-                   (not (and ahp-ignored-dir-patterns (string-match-p (regexp-opt ahp-ignored-dir-patterns) name))))
+                   (not (and ahp-ignored-dir-pattern (string-match-p ahp-ignored-dir-pattern name))))
              collect file into dirs
-           when (if ahp-only-these-patterns
-                    (string-match-p (regexp-opt ahp-only-these-patterns) name)
+           when (if ahp-only-this-pattern
+                    (string-match-p ahp-only-this-pattern name)
                   (and (not (file-directory-p file))
                        (not (member name ahp-ignored-files))
-                       (not (and ahp-ignored-file-patterns (string-match-p (regexp-opt ahp-ignored-file-patterns) name)))))
+                       (not (and ahp-ignored-file-pattern (string-match-p ahp-ignored-file-pattern name)))))
              collect file into files
            finally
              (cl-return (list dirs files))))
