@@ -274,19 +274,26 @@ Directories are pruned according to `ahp-ignored-dirs' and
 and `ahp-ignored-file-pattern'.
 If `ahp-only-this-pattern' is non-nil only files that match are collected."
   (cl-loop for file in (directory-files dir t)
-           for name = (file-name-nondirectory file)
-           when (and (file-directory-p file)
-                   (not (member name (cl-union '("." "..") ahp-ignored-dirs)))
-                   (not (and ahp-ignored-dir-pattern (string-match-p ahp-ignored-dir-pattern name))))
+           when (ahp--accept-dir-p file)
              collect file into dirs
-           when (if ahp-only-this-pattern
-                    (string-match-p ahp-only-this-pattern name)
-                  (and (not (file-directory-p file))
-                       (not (member name ahp-ignored-files))
-                       (not (and ahp-ignored-file-pattern (string-match-p ahp-ignored-file-pattern name)))))
+           when (ahp--accept-file-p file)
              collect file into files
            finally
              (cl-return (list dirs files))))
+
+(defun ahp--accept-dir-p (file)
+  (let ((name (file-name-nondirectory file)))
+    (and (file-directory-p file)
+         (not (member name (cl-union '("." "..") ahp-ignored-dirs)))
+         (not (and ahp-ignored-dir-pattern (string-match-p ahp-ignored-dir-pattern name))))))
+
+(defun ahp--accept-file-p (file)
+  (let ((name (file-name-nondirectory file)))
+    (if ahp-only-this-pattern
+        (string-match-p ahp-only-this-pattern name)
+      (and (not (file-directory-p file))
+           (not (member name ahp-ignored-files))
+           (not (and ahp-ignored-file-pattern (string-match-p ahp-ignored-file-pattern name)))))))
 
 (defun ahp--enqueue-all (queue xs)
   "Enqueue everything in `xs' in `queue'."
