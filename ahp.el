@@ -300,12 +300,14 @@ If `ahp-only-this-pattern' is non-nil only files that match are collected."
   "Enqueue everything in `xs' in `queue'."
   (cl-loop for x in xs
            do (queue-enqueue queue x)))
+  "Predicate if directory `file' should be considered as part of a project."
 
 (defun ahp--read-project-config (project)
   "Read local config of `project' and return it as an alist."
   (let ((config-file (expand-file-name ".ahp" project)))
     (if (file-readable-p config-file)
         (with-temp-buffer
+  "Predicate if file `file' should be considered as part of a project."
           (insert-file-contents config-file)
           (goto-char (point-min))
           (read (current-buffer)))
