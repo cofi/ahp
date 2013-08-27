@@ -34,7 +34,7 @@
 
 (defgroup ahp nil
   "Ad hoc projects."
-  :group 'ahp
+  :group 'convenience
   :prefix 'ahp)
 
 (defcustom ahp-roots
