@@ -32,6 +32,8 @@
 (require 'cl-lib)
 (require 'queue)
 
+(require 'filenotify nil t)
+
 (defgroup ahp nil
   "Ad hoc projects."
   :group 'convenience
@@ -86,6 +88,13 @@ be traversed for files or directories."
 Set to nil to prevent saving and loading."
   :type 'string
   :group 'ahp)
+
+(defcustom ahp-auto-update (featurep 'filenotify)
+  "Watch for changes using `filenotify' and update projects incrementally."
+  :type 'boolean
+  :group 'ahp)
+
+(defvar ahp--filenotify-watches (make-hash-table))
 
 (defvar ahp--projects nil)
 
@@ -248,8 +257,12 @@ Files contained in pruned directories are not included."
   (let ((q (queue-create)))
     (queue-enqueue q dir)
     (cl-loop until (null (queue-head q)) ; expanded `queue-empty', didn't compile otherwise
-             for (dirs files) = (ahp--pruned-ls (queue-dequeue q))
-             do (ahp--enqueue-all q dirs)
+             for dir = (queue-dequeue q)
+             for (dirs files) = (ahp--pruned-ls dir)
+             do (progn
+                  (ahp--enqueue-all q dirs)
+                  (when ahp-auto-update
+                    (puthash dir (file-notify-add-watch dir '(change) #'ahp--filenotify-callback) ahp--filenotify-watches)))
              nconc files into rfiles
              finally (cl-return (sort rfiles #'string<)))))
 
@@ -261,8 +274,12 @@ Directories contained in pruned directories are not included."
   (let ((q (queue-create)))
     (queue-enqueue q dir)
     (cl-loop until (null (queue-head q))
-             for (dirs _) = (ahp--pruned-ls (queue-dequeue q))
-             do (ahp--enqueue-all q dirs)
+             for dir = (queue-dequeue q)
+             for (dirs _) = (ahp--pruned-ls dir)
+             do (progn
+                  (ahp--enqueue-all q dirs)
+                  (when ahp-auto-update
+                    (puthash dir (file-notify-add-watch dir '(change) #'ahp--filenotify-callback) ahp--filenotify-watches)))
              nconc dirs into rdirs
              finally (cl-return (progn (cl-delete-duplicates rdirs)
                                     (sort rdirs #'string<))))))
@@ -283,12 +300,14 @@ If `ahp-only-this-pattern' is non-nil only files that match are collected."
              (cl-return (list dirs files))))
 
 (defun ahp--accept-dir-p (file)
+  "Predicate if directory `file' should be considered as part of a project."
   (let ((name (file-name-nondirectory file)))
     (and (file-directory-p file)
          (not (member name (cl-union '("." "..") ahp-ignored-dirs)))
          (not (and ahp-ignored-dir-pattern (string-match-p ahp-ignored-dir-pattern name))))))
 
 (defun ahp--accept-file-p (file)
+  "Predicate if file `file' should be considered as part of a project."
   (let ((name (file-name-nondirectory file)))
     (if ahp-only-this-pattern
         (string-match-p ahp-only-this-pattern name)
@@ -296,18 +315,67 @@ If `ahp-only-this-pattern' is non-nil only files that match are collected."
            (not (member name ahp-ignored-files))
            (not (and ahp-ignored-file-pattern (string-match-p ahp-ignored-file-pattern name)))))))
 
+
+(defun ahp--filenotify-callback (event)
+  "Callback for filenotify watches."
+  (let* ((dir (first (gethash (first event) file-notify-descriptors)))
+         (project (cl-loop for d in (ahp--projects)
+                           when (string-prefix-p (directory-file-name (expand-file-name d)) dir)
+                           do (cl-return d)))
+         (action (second event))
+         (file (file-notify--event-file-name event)))
+    (cl-case action
+      (created (ahp--filenotify-add project file))
+      (deleted (ahp--filenotify-remove project file))
+      (renamed (ahp--filenotify-remove project file)
+               (ahp--filenotify-add project (file-notify--event-file1-name event))))))
+
+(defun ahp--filenotify-add (project file)
+  "Maybe add `file' to `project'.
+Installs a watch if `file' is a directory."
+  (let* ((entry (assoc project ahp--projects))
+         (plist (cdr entry)))
+    (if (file-directory-p file)
+        (when (and (ahp--accept-dir-p file) (plist-member plist :dirs))
+          (setf (cdr entry) (plist-put plist :dirs
+                                       (sort (cons file (plist-get plist :dirs)) #'string<)))
+          (puthash file (file-notify-add-watch file '(change) #'ahp--filenotify-callback) ahp--filenotify-watches))
+      (when (and (not (string-prefix-p ".#" (file-name-nondirectory file))) ; ignore emacs pre-save copies
+               (ahp--accept-file-p file) (plist-member plist :files))
+        (setf (cdr entry) (plist-put plist :files (sort (cons file (plist-get plist :files)) #'string<)))))))
+
+(defun ahp--filenotify-remove (project file)
+  "Remove `file' from `project'.
+Remove the appropriate watch if `file' is a directory."
+  (let* ((entry (assoc project ahp--projects))
+         (plist (cdr entry))
+         obsolete-watch-dirs)
+    ;; we can't check if the file that was deleted was a directory, so we have
+    ;; to do some pull-ups
+    (maphash (lambda (dir watch)
+               (when (string-prefix-p file dir)
+                 (push dir obsolete-watch-dirs)
+                 (file-notify-rm-watch watch)))
+               ahp--filenotify-watches)
+    (cl-loop for dir in obsolete-watch-dirs
+             do (remhash dir ahp--filenotify-watches))
+    (setf (cdr entry) (plist-put plist :dirs (cl-remove-if (lambda (dir)
+                                                             (string-prefix-p file dir))
+                                                           (plist-get plist :dirs))))
+    (setf (cdr entry) (plist-put plist :files (cl-remove-if (lambda (f)
+                                                              (string-prefix-p file f))
+                                                            (plist-get plist :files))))))
+
 (defun ahp--enqueue-all (queue xs)
   "Enqueue everything in `xs' in `queue'."
   (cl-loop for x in xs
            do (queue-enqueue queue x)))
-  "Predicate if directory `file' should be considered as part of a project."
 
 (defun ahp--read-project-config (project)
   "Read local config of `project' and return it as an alist."
   (let ((config-file (expand-file-name ".ahp" project)))
     (if (file-readable-p config-file)
         (with-temp-buffer
-  "Predicate if file `file' should be considered as part of a project."
           (insert-file-contents config-file)
           (goto-char (point-min))
           (read (current-buffer)))
