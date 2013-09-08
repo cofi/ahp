@@ -320,7 +320,7 @@ If `ahp-only-this-pattern' is non-nil only files that match are collected."
   "Callback for filenotify watches."
   (let* ((dir (first (gethash (first event) file-notify-descriptors)))
          (project (cl-loop for d in (ahp--projects)
-                           when (string-prefix-p (directory-file-name (expand-file-name d)) dir)
+                           when (string-prefix-p (expand-file-name d) (file-name-as-directory dir))
                            do (cl-return d)))
          (action (second event))
          (file (file-notify--event-file-name event)))
