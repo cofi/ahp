@@ -164,6 +164,18 @@ With a prefix choose the project first."
   (kill-this-buffer))
 
 ;;;###autoload
+(defun ahp-delete-project ()
+  "Delete a project from cache."
+  (interactive)
+  (let* ((named-projects (cl-loop for p in (ahp--projects)
+                                  collect (cons (ahp--project-name p) p)))
+         (deletee (cdr (assoc (funcall ahp-completing-read
+                                       "Project: " named-projects nil t)
+                              named-projects))))
+    (setq ahp--projects (remove (assoc deletee ahp--projects)
+                                ahp--projects))))
+
+;;;###autoload
 (defun ahp-save-projects ()
   "Save projects to `ahp-project-save-file'."
   (interactive)
