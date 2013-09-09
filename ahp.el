@@ -26,6 +26,8 @@
 ;; Boston, MA 02111-1307, USA.
 
 ;;; Commentary:
+;;;
+;;; See README.org
 
 ;;; Code:
 

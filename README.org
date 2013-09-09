@@ -1,0 +1,48 @@
+* Ad hoc Projects
+  An ad hoc project is defined by certain files or directories (see =ahp-roots=) and all sub-directories will be treated as part of this project (unless they don't fit your settings).
+
+  Within a project you have the possibility to open the associated files and directories, switch between buffers of that project and kill (some) buffers of the current project.
+  Upon the first opening ahp will fill the caches for that project which may take a while for very large projects.
+
+  To control which directories and files are treated as part of a project there are a number of variables which are listed in =M-x customize-group ahp=.
+
+* Project Local Configuration
+  You can also have a project-local configuration defined in a file called =.ahp= (which is also considered a project root) in the root of the project.
+  It contains an alist of variables (not unlike those you find in =.dir-locals.el=).
+
+  The following variables are considered project-local and are a list of strings:
+    - =ahp-ignored-dirs=
+    - =ahp-ignored-files=
+
+  Additionally, the following can be used and hold regexps:
+
+    - =ahp-ignored-dir-pattern=
+    - =ahp-ignored-file-pattern=
+    - =ahp-only-this-pattern=
+
+  All variables replace the default values and are not merged with them.
+
+  Here is an example how the contents of a =.ahp= may look like:
+
+  #+BEGIN_SRC emacs-lisp
+    (
+    (ahp-ignored-files . ("silly-file" "baz"))
+    (ahp-ignored-dir-pattern . "^\\(foo\\|bar-.*\\)")
+    )
+  #+END_SRC
+
+* Saving & Restoring Projects
+  ahp will automatically save and restore the projects you have been using on shutdown respective on startup.
+  However it will not save its caches and after restoring your projects will be inactive (i.e. not associated with files or directories).
+  The caches will be filled when you try to open a file or directory.
+
+  You can also call =ahp-read-projects= with a prefix to force the caches of all projects to be filled.
+  Alternatively, you can call =ahp-update-projects= with a prefix argument (unlike calling =ahp-read-projects= this will not reset the current projects).
+  To manually save the projects, call =ahp-save-projects=.
+
+  If you don't want to save your projects, set =ahp-project-save-file= to nil.
+
+* Automatic Updates
+  When your Emacs version supports =filenotify= (Emacs >=24.4 built with support) ahp will automatically update the directory and file caches associated with a project.
+
+  For this the project has to be active (i.e. ahp tried to open a file or directory within it) and =ahp-auto-update= has to be non-nil (which it will be by default when =filenotify= is supported).
