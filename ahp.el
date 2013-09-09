@@ -98,14 +98,16 @@ Set to nil to prevent saving and loading."
 
 (defvar ahp--projects nil)
 
-(defun ahp-update-projects ()
-  "Update all projects."
-  (interactive)
+(defun ahp-update-projects (fill-all-caches)
+  "Update all projects.
+With a prefix argument all caches will be filled, else the caches
+already present will be updated."
+  (interactive "p")
   (cl-loop for (project . plist) in ahp--projects
-           when (plist-member plist :files)
+           when (or fill-all-caches (plist-member plist :files))
              do (ahp--project-files project t)
-           when (plist-member plist :dirs)
-           do (ahp--project-dirs project t)))
+           when (or fill-all-caches (plist-member plist :dirs))
+             do (ahp--project-dirs project t)))
 
 ;;;###autoload
 (defun ahp-dired (dir)
