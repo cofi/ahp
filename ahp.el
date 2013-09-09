@@ -3,7 +3,7 @@
 ;; Copyright (C) 2013 Michael Markert
 ;; Author: Michael Markert <markert.michael@gmail.com>
 ;; Created: 2013-08-02
-;; Version: 0.4
+;; Version: 0.5
 ;; Keywords: projects convenience
 ;; URL: https://github.com/cofi/ahp
 ;; Package-Requires: ((queue "0.1"))
