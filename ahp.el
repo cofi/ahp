@@ -163,7 +163,8 @@ With a prefix choose the project first."
   (let* ((project (ahp--maybe-prompt-for-project choose-project))
          (buffers (remove (current-buffer) (ahp--project-buffers (expand-file-name project)))))
     (mapc #'kill-buffer buffers)
-    (message "Killed %d buffer" (length buffers))))
+    (when (called-interactively-p 'interactive)
+      (message "Killed %d buffer" (length buffers)))))
 
 ;;;###autoload
 (defun ahp-kill-buffers (choose-project)
