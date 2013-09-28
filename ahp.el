@@ -104,7 +104,7 @@ Set to nil to prevent saving and loading."
   "Update all projects.
 With a prefix argument all caches will be filled, else the caches
 already present will be updated."
-  (interactive "p")
+  (interactive "P")
   (cl-loop for (project . plist) in ahp--projects
            when (or fill-all-caches (plist-member plist :files))
              do (ahp--project-files project t)
@@ -112,12 +112,15 @@ already present will be updated."
              do (ahp--project-dirs project t)))
 
 ;;;###autoload
-(defun ahp-dired (dir)
-  "Open a project directory in dired."
-  (interactive (list (funcall ahp-completing-read (format "(%s) Directory: " (ahp--project-name))
-                              (ahp--project-dirs (ahp--project-root))
-                              nil t)))
-  (dired dir))
+(defun ahp-dired (choose-project)
+  "Open a project directory in dired.
+
+With a prefix choose the project first."
+  (interactive "P")
+  (let ((project (ahp--maybe-prompt-for-project choose-project)))
+    (dired (funcall ahp-completing-read (format "(%s) Directory: " (ahp--project-name project))
+                    (ahp--project-dirs project)
+                    nil t))))
 
 ;;;###autoload
 (defun ahp-root-dired (choose-project)
@@ -125,19 +128,20 @@ already present will be updated."
 
 With a prefix choose the project first."
   (interactive "P")
-  (let* ((project (if (or choose-project (not (buffer-file-name)))
-                      (funcall ahp-completing-read "Project: " (ahp--projects) nil t)
-                    (ahp--project-root))))
+  (let ((project (ahp--maybe-prompt-for-project choose-project)))
     (dired project)))
 
 ;;;###autoload
-(defun ahp-switch-to-buffer (buffer)
-  "Switch to a buffer in the project."
-  (interactive (list (funcall ahp-completing-read (format "(%s) Buffer: " (ahp--project-name))
+(defun ahp-switch-to-buffer (choose-project)
+  "Switch to a buffer in the project.
+
+With a prefix choose the project first."
+  (interactive "P")
+  (let ((project (ahp--maybe-prompt-for-project choose-project)))
+  (switch-to-buffer (funcall ahp-completing-read (format "(%s) Buffer: " (ahp--project-name project))
                               (mapcar #'buffer-name
-                                      (ahp--project-buffers (expand-file-name (ahp--project-root))))
-                              nil t)))
-  (switch-to-buffer buffer))
+                                      (ahp--project-buffers (expand-file-name project)))
+                              nil t))))
 
 ;;;###autoload
 (defun ahp-find-file (choose-project)
@@ -145,39 +149,40 @@ With a prefix choose the project first."
 
 With a prefix choose the project first."
   (interactive "P")
-  (let* ((project (if (or choose-project (not (buffer-file-name)))
-                      (funcall ahp-completing-read "Project: " (ahp--projects) nil t)
-                    (ahp--project-root))))
+  (let ((project (ahp--maybe-prompt-for-project choose-project)))
     (find-file (funcall ahp-completing-read (format "(%s) File: " (ahp--project-name project))
                         (ahp--project-files project)
                         nil t))))
 
 ;;;###autoload
-(defun ahp-kill-other-buffers ()
-  "Kill other buffers of the current project."
-  (interactive)
-  (let ((buffers (ahp--project-buffers (expand-file-name (ahp--project-root)))))
+(defun ahp-kill-other-buffers (choose-project)
+  "Kill other buffers of the current project.
+
+With a prefix choose the project first."
+  (interactive "P")
+  (let* ((project (ahp--maybe-prompt-for-project choose-project))
+         (buffers (remove (current-buffer) (ahp--project-buffers (expand-file-name project)))))
     (mapc #'kill-buffer buffers)
     (message "Killed %d buffer" (length buffers))))
 
 ;;;###autoload
-(defun ahp-kill-buffers ()
-  "Kill all buffers of the current project."
-  (interactive)
-  (ahp-kill-other-buffers)
-  (kill-this-buffer))
+(defun ahp-kill-buffers (choose-project)
+  "Kill all buffers of the current project.
+
+With a prefix choose the project first."
+  (interactive "P")
+  (ahp-kill-other-buffers choose-project)
+  (unless choose-project
+    (kill-this-buffer)))
 
 ;;;###autoload
 (defun ahp-delete-project ()
   "Delete a project from cache."
   (interactive)
-  (let* ((named-projects (cl-loop for p in (ahp--projects)
-                                  collect (cons (ahp--project-name p) p)))
-         (deletee (cdr (assoc (funcall ahp-completing-read
-                                       "Project: " named-projects nil t)
-                              named-projects))))
-    (setq ahp--projects (remove (assoc deletee ahp--projects)
-                                ahp--projects))))
+  (setq ahp--projects (cl-loop with deletee = (ahp--prompt-for-project t)
+                               for entry in ahp--projects
+                               unless (string= (first entry) deletee)
+                               collect entry)))
 
 ;;;###autoload
 (defun ahp-save-projects ()
@@ -209,6 +214,28 @@ With prefix also initialize caches."
         (cl-loop for project in (ahp--projects)
                  do (progn (ahp--project-files project)
                            (ahp--project-dirs project)))))))
+
+(defun ahp--maybe-prompt-for-project (force-prompt &optional named)
+  "Prompt for the project to use if `force-prompt' is non-nil or current buffer is not in a project.
+
+If `named' is non-nil prompt with the project name."
+  (if (or force-prompt (not (buffer-file-name)))
+      (ahp--prompt-for-project named)
+    (or (ahp--project-root)
+        (ahp--prompt-for-project named))))
+
+(defun ahp--prompt-for-project (&optional named)
+  "Prompt for the project to use.
+
+If `named' is non-nil prompt with the project name."
+  (let* ((choice (if named
+                    (cl-loop for p in (ahp--projects)
+                             collect (cons (ahp--project-name p) p))
+                  (ahp--projects)))
+        (selection (funcall ahp-completing-read "Project: " choice nil t)))
+    (if named
+        (cdr (assoc selection choice))
+      selection)))
 
 (defun ahp--projects ()
   "Return the projects."
